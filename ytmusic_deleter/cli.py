@@ -374,17 +374,25 @@ def remove_duplicate_playlists(ctx: click.Context):
                 track_count = len(full_playlist.get("tracks", []))
                 playlists_with_counts.append({"playlist": playlist, "track_count": track_count})
                 logging.info(f"\t- Playlist ID {playlist['playlistId']}: {track_count} songs")
-            except Exception as e:
+            except (ytmusicapi.exceptions.YTMusicServerError, ytmusicapi.exceptions.YTMusicError) as e:
                 logging.error(f"\tFailed to get details for playlist {playlist['playlistId']}: {e}")
-                # If we can't get details, assume 0 tracks
+                # If we can't get details, assume 0 tracks so it will be deleted (safer than keeping)
                 playlists_with_counts.append({"playlist": playlist, "track_count": 0})
 
-        # Sort by track count (descending) - the one with most songs will be first
-        playlists_with_counts.sort(key=lambda x: x["track_count"], reverse=True)
+        # Sort by track count (descending), then by playlistId for stable sorting when counts are equal
+        # This ensures consistent behavior when multiple playlists have the same track count
+        playlists_with_counts.sort(key=lambda x: (x["track_count"], x["playlist"]["playlistId"]), reverse=True)
 
         # Keep the first one (most songs), delete the rest
         to_keep = playlists_with_counts[0]
         to_delete = playlists_with_counts[1:]
+
+        # Warn if the kept playlist has same track count as one being deleted
+        if to_delete and to_keep["track_count"] == to_delete[0]["track_count"]:
+            logging.warning(
+                f"\tMultiple playlists have the same track count ({to_keep['track_count']}). "
+                f"Keeping playlist ID {to_keep['playlist']['playlistId']} (first by ID)."
+            )
 
         logging.info(
             f"\tKeeping playlist with {to_keep['track_count']} songs (ID: {to_keep['playlist']['playlistId']})"
@@ -414,9 +422,9 @@ def remove_duplicate_playlists(ctx: click.Context):
                 playlists_deleted += 1
             else:
                 logging.error(f"\tFailed to delete playlist {playlist['title']!r}.")
-        except Exception:
+        except (ytmusicapi.exceptions.YTMusicServerError, ytmusicapi.exceptions.YTMusicError) as e:
             logging.error(
-                f"\tCould not delete playlist {playlist['title']!r}. You might not have permission to delete it."
+                f"\tCould not delete playlist {playlist['title']!r}. You might not have permission to delete it. Error: {e}"
             )
         update_progress()
 
