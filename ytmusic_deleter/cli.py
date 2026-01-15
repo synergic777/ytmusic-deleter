@@ -337,7 +337,12 @@ def delete_playlists(ctx: click.Context):
 @cli.command()
 @click.pass_context
 def remove_duplicate_playlists(ctx: click.Context):
-    """Remove duplicate playlists by name, keeping only the one with the most songs"""
+    """
+    Remove duplicate playlists by name, keeping only the one with the most songs.
+
+    Returns:
+        tuple: (playlists_deleted, total_playlists_to_delete)
+    """
     yt_auth: YTMusic = ctx.obj["YT_AUTH"]
     logging.info("Retrieving all your playlists...")
     library_playlists = yt_auth.get_library_playlists(limit=None)
@@ -376,7 +381,8 @@ def remove_duplicate_playlists(ctx: click.Context):
                 logging.info(f"\t- Playlist ID {playlist['playlistId']}: {track_count} songs")
             except (ytmusicapi.exceptions.YTMusicServerError, ytmusicapi.exceptions.YTMusicError) as e:
                 logging.error(f"\tFailed to get details for playlist {playlist['playlistId']}: {e}")
-                # If we can't get details, assume 0 tracks so it will be deleted (safer than keeping)
+                # If we can't get details, assign 0 tracks. This ensures the inaccessible playlist
+                # will be deleted rather than kept, which is safer than keeping an unknown playlist.
                 playlists_with_counts.append({"playlist": playlist, "track_count": 0})
 
         # Sort by track count (descending), then by playlistId (ascending) for stable sorting when counts are equal
