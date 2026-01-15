@@ -486,26 +486,26 @@ def fixture_create_duplicate_playlists(yt_browser: YTMusic, medium_song_list):
     """
     playlist_name = "Duplicate Test Playlist"
     playlist_ids = []
-    
+
     # Create first playlist with 2 songs
     playlist_id_1 = yt_browser.create_playlist(playlist_name, "First duplicate with 2 songs")
     yt_browser.add_playlist_items(playlist_id_1, medium_song_list[:2])
     playlist_ids.append(playlist_id_1)
-    
+
     # Create second playlist with 5 songs (this one should be kept)
     playlist_id_2 = yt_browser.create_playlist(playlist_name, "Second duplicate with 5 songs")
     yt_browser.add_playlist_items(playlist_id_2, medium_song_list[:5])
     playlist_ids.append(playlist_id_2)
-    
+
     # Create third playlist with 3 songs
     playlist_id_3 = yt_browser.create_playlist(playlist_name, "Third duplicate with 3 songs")
     yt_browser.add_playlist_items(playlist_id_3, medium_song_list[:3])
     playlist_ids.append(playlist_id_3)
-    
+
     time.sleep(2)  # Wait for playlists to be fully created
-    
+
     yield playlist_ids
-    
+
     # Cleanup - delete any remaining playlists
     for playlist_id in playlist_ids:
         try:

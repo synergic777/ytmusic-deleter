@@ -109,21 +109,21 @@ class TestCli:
         all_playlists = yt_browser.get_library_playlists(limit=None)
         duplicate_playlists = [p for p in all_playlists if p["title"] == "Duplicate Test Playlist"]
         assert len(duplicate_playlists) == 3, f"Expected 3 duplicate playlists, found {len(duplicate_playlists)}"
-        
+
         # Run the command
         result = runner.invoke(cli, ["remove-duplicate-playlists"], standalone_mode=False, obj=yt_browser)
         assert result.exit_code == 0
-        
+
         playlists_deleted, playlists_total = result.return_value
         assert playlists_deleted == 2, f"Expected 2 playlists to be deleted, but {playlists_deleted} were deleted"
         assert playlists_total == 2, f"Expected 2 total playlists to process, but got {playlists_total}"
-        
+
         # Verify that only one playlist remains with the correct name
         time.sleep(2)  # Wait for deletion to process
         all_playlists_after = yt_browser.get_library_playlists(limit=None)
         remaining_playlists = [p for p in all_playlists_after if p["title"] == "Duplicate Test Playlist"]
         assert len(remaining_playlists) == 1, f"Expected 1 playlist to remain, found {len(remaining_playlists)}"
-        
+
         # Verify that the remaining playlist is the one with the most songs (5 songs)
         remaining_playlist = yt_browser.get_playlist(remaining_playlists[0]["playlistId"], limit=None)
         track_count = len(remaining_playlist.get("tracks", []))

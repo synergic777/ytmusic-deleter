@@ -372,18 +372,12 @@ def remove_duplicate_playlists(ctx: click.Context):
             try:
                 full_playlist = yt_auth.get_playlist(playlist["playlistId"], limit=None)
                 track_count = len(full_playlist.get("tracks", []))
-                playlists_with_counts.append({
-                    "playlist": playlist,
-                    "track_count": track_count
-                })
+                playlists_with_counts.append({"playlist": playlist, "track_count": track_count})
                 logging.info(f"\t- Playlist ID {playlist['playlistId']}: {track_count} songs")
             except Exception as e:
                 logging.error(f"\tFailed to get details for playlist {playlist['playlistId']}: {e}")
                 # If we can't get details, assume 0 tracks
-                playlists_with_counts.append({
-                    "playlist": playlist,
-                    "track_count": 0
-                })
+                playlists_with_counts.append({"playlist": playlist, "track_count": 0})
 
         # Sort by track count (descending) - the one with most songs will be first
         playlists_with_counts.sort(key=lambda x: x["track_count"], reverse=True)
@@ -392,7 +386,9 @@ def remove_duplicate_playlists(ctx: click.Context):
         to_keep = playlists_with_counts[0]
         to_delete = playlists_with_counts[1:]
 
-        logging.info(f"\tKeeping playlist with {to_keep['track_count']} songs (ID: {to_keep['playlist']['playlistId']})")
+        logging.info(
+            f"\tKeeping playlist with {to_keep['track_count']} songs (ID: {to_keep['playlist']['playlistId']})"
+        )
         logging.info(f"\tMarking {len(to_delete)} playlist(s) for deletion")
 
         for item in to_delete:
