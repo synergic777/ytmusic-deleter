@@ -52,6 +52,8 @@ When using the `-a` option, you can also use the `--score-cutoff` or `-s` option
 
 `delete-playlists`:&nbsp;&nbsp;&nbsp;&nbsp;Delete all manually created YT Music playlists.
 
+`remove-duplicate-playlists`:&nbsp;&nbsp;&nbsp;&nbsp;Remove duplicate playlists by name, keeping only the playlist with the most songs.
+
 `delete-all`:&nbsp;&nbsp;&nbsp;&nbsp;Combo command that will run `delete-uploads`, `remove-library`, `unlike-all`, and `delete-playlists`.
 #### Non-deletion commands:
 `sort-playlist`:&nbsp;&nbsp;&nbsp;&nbsp;Sort a playlist alphabetically by artist and then by song title.
@@ -97,6 +99,10 @@ ytmusic-deleter unlike-all
 Delete all your personally created playlists:
 ```
 ytmusic-deleter delete-playlists
+```
+Remove duplicate playlists (keeping only the one with the most songs):
+```
+ytmusic-deleter remove-duplicate-playlists
 ```
 Remove everything (uploads, library tracks, playlists, and unlike all songs):
 ```
