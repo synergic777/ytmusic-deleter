@@ -476,6 +476,44 @@ def fixture_create_playlist_with_dupes(yt_browser: YTMusic, sample_song_list_dup
     yt_browser.delete_playlist(playlist_id)
 
 
+@pytest.fixture(name="create_duplicate_playlists")
+def fixture_create_duplicate_playlists(yt_browser: YTMusic, medium_song_list):
+    """
+    Create 3 playlists with the same name but different number of songs:
+    - First playlist: 2 songs
+    - Second playlist: 5 songs (should be kept)
+    - Third playlist: 3 songs
+    """
+    playlist_name = "Duplicate Test Playlist"
+    playlist_ids = []
+
+    # Create first playlist with 2 songs
+    playlist_id_1 = yt_browser.create_playlist(playlist_name, "First duplicate with 2 songs")
+    yt_browser.add_playlist_items(playlist_id_1, medium_song_list[:2])
+    playlist_ids.append(playlist_id_1)
+
+    # Create second playlist with 5 songs (this one should be kept)
+    playlist_id_2 = yt_browser.create_playlist(playlist_name, "Second duplicate with 5 songs")
+    yt_browser.add_playlist_items(playlist_id_2, medium_song_list[:5])
+    playlist_ids.append(playlist_id_2)
+
+    # Create third playlist with 3 songs
+    playlist_id_3 = yt_browser.create_playlist(playlist_name, "Third duplicate with 3 songs")
+    yt_browser.add_playlist_items(playlist_id_3, medium_song_list[:3])
+    playlist_ids.append(playlist_id_3)
+
+    time.sleep(2)  # Wait for playlists to be fully created
+
+    yield playlist_ids
+
+    # Cleanup - delete any remaining playlists
+    for playlist_id in playlist_ids:
+        try:
+            yt_browser.delete_playlist(playlist_id)
+        except Exception:
+            pass  # Playlist might already be deleted by the test
+
+
 @pytest.fixture(name="get_playlist_with_dupes")
 def fixture_get_playlist_with_dupes(yt_browser: YTMusic, sample_song_list_dupes):
     """

@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import time
+from collections import defaultdict
 from pathlib import Path
 from random import shuffle as unsort
 from time import strftime
@@ -331,6 +332,110 @@ def delete_playlists(ctx: click.Context):
         update_progress()
     logging.info(f"Deleted {playlists_deleted} out of {len(library_playlists)} playlists from your library.")
     return (playlists_deleted, len(library_playlists))
+
+
+@cli.command()
+@click.pass_context
+def remove_duplicate_playlists(ctx: click.Context):
+    """
+    Remove duplicate playlists by name, keeping only the one with the most songs.
+
+    Returns:
+        tuple: (playlists_deleted, total_playlists_to_delete)
+    """
+    yt_auth: YTMusic = ctx.obj["YT_AUTH"]
+    logging.info("Retrieving all your playlists...")
+    library_playlists = yt_auth.get_library_playlists(limit=None)
+    # Can't delete "Your Likes" playlist
+    library_playlists = list(filter(lambda playlist: playlist["playlistId"] != "LM", library_playlists))
+    logging.info(f"\tRetrieved {len(library_playlists)} playlists.")
+
+    # Group playlists by name (case-insensitive)
+    playlists_by_name = defaultdict(list)
+    for playlist in library_playlists:
+        # Normalize the name to lowercase for comparison
+        normalized_name = playlist["title"].lower()
+        playlists_by_name[normalized_name].append(playlist)
+
+    # Find duplicate groups (playlists with same name)
+    duplicate_groups = {name: playlists for name, playlists in playlists_by_name.items() if len(playlists) > 1}
+
+    if not duplicate_groups:
+        logging.info("No duplicate playlists found.")
+        return (0, 0)
+
+    logging.info(f"Found {len(duplicate_groups)} groups of duplicate playlists.")
+
+    # For each group, determine which playlist to keep (the one with most songs)
+    playlists_to_delete = []
+    for name, playlists in duplicate_groups.items():
+        logging.info(f"\nProcessing duplicate group: {name!r} ({len(playlists)} playlists)")
+
+        # Get full details for each playlist to count songs
+        playlists_with_counts = []
+        for playlist in playlists:
+            try:
+                full_playlist = yt_auth.get_playlist(playlist["playlistId"], limit=None)
+                track_count = len(full_playlist.get("tracks", []))
+                playlists_with_counts.append({"playlist": playlist, "track_count": track_count})
+                logging.info(f"\t- Playlist ID {playlist['playlistId']}: {track_count} songs")
+            except (ytmusicapi.exceptions.YTMusicServerError, ytmusicapi.exceptions.YTMusicError) as e:
+                logging.error(f"\tFailed to get details for playlist {playlist['playlistId']}: {e}")
+                # If we can't get details, assign 0 tracks. This ensures the inaccessible playlist
+                # will be deleted rather than kept, which is safer than keeping an unknown playlist.
+                playlists_with_counts.append({"playlist": playlist, "track_count": 0})
+
+        # Sort by track count (descending), then by playlistId (ascending) for stable sorting when counts are equal
+        # This ensures consistent behavior when multiple playlists have the same track count
+        playlists_with_counts.sort(key=lambda x: (-x["track_count"], x["playlist"]["playlistId"]))
+
+        # Keep the first one (most songs), delete the rest
+        to_keep = playlists_with_counts[0]
+        to_delete = playlists_with_counts[1:]
+
+        # Warn if the kept playlist has same track count as one being deleted
+        if to_delete and to_keep["track_count"] == to_delete[0]["track_count"]:
+            logging.warning(
+                f"\tMultiple playlists have the same track count ({to_keep['track_count']}). "
+                f"Keeping playlist ID {to_keep['playlist']['playlistId']} (first by ID)."
+            )
+
+        logging.info(
+            f"\tKeeping playlist with {to_keep['track_count']} songs (ID: {to_keep['playlist']['playlistId']})"
+        )
+        logging.info(f"\tMarking {len(to_delete)} playlist(s) for deletion")
+
+        for item in to_delete:
+            playlists_to_delete.append(item["playlist"])
+
+    # Now delete all the marked playlists
+    logging.info(f"\nBegin deleting {len(playlists_to_delete)} duplicate playlists...")
+    global progress_bar
+    progress_bar = manager.counter(
+        total=len(playlists_to_delete),
+        desc="Duplicate Playlists Deleted",
+        unit="playlists",
+        enabled=not ctx.obj["STATIC_PROGRESS"],
+    )
+
+    playlists_deleted = 0
+    for playlist in playlists_to_delete:
+        logging.info(f"Deleting playlist: {playlist['title']} (ID: {playlist['playlistId']})")
+        try:
+            response = yt_auth.delete_playlist(playlist["playlistId"])
+            if response:
+                logging.info(f"\tDeleted duplicate playlist {playlist['title']!r}.")
+                playlists_deleted += 1
+            else:
+                logging.error(f"\tFailed to delete playlist {playlist['title']!r}.")
+        except (ytmusicapi.exceptions.YTMusicServerError, ytmusicapi.exceptions.YTMusicError) as e:
+            logging.error(
+                f"\tCould not delete playlist {playlist['title']!r}. You might not have permission to delete it. Error: {e}"
+            )
+        update_progress()
+
+    logging.info(f"Deleted {playlists_deleted} out of {len(playlists_to_delete)} duplicate playlists.")
+    return (playlists_deleted, len(playlists_to_delete))
 
 
 @cli.command()
