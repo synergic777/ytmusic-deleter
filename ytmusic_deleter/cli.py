@@ -379,9 +379,9 @@ def remove_duplicate_playlists(ctx: click.Context):
                 # If we can't get details, assume 0 tracks so it will be deleted (safer than keeping)
                 playlists_with_counts.append({"playlist": playlist, "track_count": 0})
 
-        # Sort by track count (descending), then by playlistId for stable sorting when counts are equal
+        # Sort by track count (descending), then by playlistId (ascending) for stable sorting when counts are equal
         # This ensures consistent behavior when multiple playlists have the same track count
-        playlists_with_counts.sort(key=lambda x: (x["track_count"], x["playlist"]["playlistId"]), reverse=True)
+        playlists_with_counts.sort(key=lambda x: (-x["track_count"], x["playlist"]["playlistId"]))
 
         # Keep the first one (most songs), delete the rest
         to_keep = playlists_with_counts[0]
